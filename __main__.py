@@ -23,28 +23,57 @@ def getIsbnFromPdf(filePath: str):
         except:
             return []
 
+def getBookInfoFromIsbn(isbn: str) -> str:
+    u = urllib.request.urlopen("http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query="+ isbn +"&maximumRecords=1")
+    doc = parse(u)
+    root = doc.getroot()
+    for child in root.iter(r'{http://www.loc.gov/zing/srw/}numberOfRecords'):
+        for child in root.iter(r"{http://www.loc.gov/MARC21/slim}datafield"):
+            for grandchild in child.iter(r"{http://www.loc.gov/MARC21/slim}subfield"):
+                if child.attrib['tag'] == '050':
+                    if grandchild.attrib['code'] == 'a':
+                        locClass_firstPart = grandchild.text
+                    if grandchild.attrib['code'] == 'b':
+                        locClass_secondPart = grandchild.text
+                if child.attrib['tag'] == '100':
+                    if grandchild.attrib['code'] == 'a':
+                        # TODO handle multiple authors
+                        locAuthor = grandchild.text.split(',')[0]
+                if child.attrib['tag'] == '245':
+                    if grandchild.attrib['code'] == 'a':
+                        locTitle = grandchild.text.replace("\\","")
+                        locTitle = locTitle.replace("/","")
+                        locTitle = locTitle.replace(".","")
+                        locTitle = locTitle.replace(":","")
+                        #locTitle = locTitle.replace("?"," Sharp")
+                        locTitle = locTitle.replace("\u266f"," Sharp")
+                        locTitle = locTitle.strip()
+
+        try:
+            return (locClass_firstPart + locClass_secondPart), locAuthor, locTitle
+        except (UnboundLocalError, NameError):
+            return None, None, None
+        return None, None, None
+
 def check_file(filePath: str):
     locClassFound = False
     if filePath.endswith(".pdf"):
-        loc_nums = getIsbnFromPdf(filePath)
-        if len(loc_nums) > 0:
-            print(filePath)
-            for num in loc_nums:
+        isbn = getIsbnFromPdf(filePath)
+        if len(isbn) > 0:
+            #print(filePath)
+            #print(isbn)
+            for num in isbn:
                 if locClassFound:
                     break
-                u = urllib.request.urlopen("http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query="+ num +"&maximumRecords=1")
-                doc = parse(u)
-                root = doc.getroot()
-                for child in root.iter(r'{http://www.loc.gov/zing/srw/}numberOfRecords'):
-                    for child in root.iter(r"{http://www.loc.gov/MARC21/slim}datafield"):
-                        if child.attrib['tag'] == '050':
-                            for grandchild in child.iter(r"{http://www.loc.gov/MARC21/slim}subfield"):
-                                print(grandchild.text)
-                                locClassFound = True
+                loc_class, loc_author, loc_title = getBookInfoFromIsbn(num)
+                if loc_class is not None:
+                    locClassFound = True
+                    newFileName = (loc_class + " ("+loc_author+") "+loc_title+".pdf")
+                    print(rename_cmd + " \""+filePath+"\"", "\""+os.path.join(directory, newFileName)+"\"")
+if os.name == 'nt':
+    rename_cmd = 'rename'
+else:
+    rename_cmd = 'mv'
+directory = r"D:\Literature"
+[check_file(os.path.join(directory, i)) for i in os.listdir(directory)]
 
-def main():
-    directory = r"D:\Literature"
-    [check_file(os.path.join(directory, i)) for i in os.listdir(directory)]
-
-if __name__ == '__main__':
-    main()
