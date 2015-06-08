@@ -48,7 +48,6 @@ def getBookInfoFromIsbn(isbn: str) -> str:
                         #locTitle = locTitle.replace("?"," Sharp")
                         locTitle = locTitle.replace("\u266f"," Sharp")
                         locTitle = locTitle.strip()
-
         try:
             return (locClass_firstPart + locClass_secondPart), locAuthor, locTitle
         except (UnboundLocalError, NameError):
@@ -70,10 +69,11 @@ def check_file(filePath: str):
                     locClassFound = True
                     newFileName = (loc_class + " ("+loc_author+") "+loc_title+".pdf")
                     print(rename_cmd + " \""+filePath+"\"", "\""+os.path.join(directory, newFileName)+"\"")
+
+directory = r"D:\Literature"
 if os.name == 'nt':
     rename_cmd = 'rename'
 else:
     rename_cmd = 'mv'
-directory = r"D:\Literature"
 [check_file(os.path.join(directory, i)) for i in os.listdir(directory)]
 
